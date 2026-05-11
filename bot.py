@@ -1,27 +1,29 @@
 import os
 import sys
-from dotenv import load_dotenv
 import telebot
+from dotenv import load_dotenv
 
-load_dotenv()  # загружает .env (на Railway не обязательно, но не мешает)
+# Загружаем .env (на локалке)
+load_dotenv()
 
 TOKEN = os.getenv("BOT_TOKEN")
 
 if not TOKEN:
-    print("ОШИБКА: BOT_TOKEN не найден!")
+    print("ОШИБКА: BOT_TOKEN не найден в переменных окружения!")
+    print("Проверь Variables на Railway")
     sys.exit(1)
 
 bot = telebot.TeleBot(TOKEN)
 
-@bot.message_handler(commands=['start'])
-def start(message):
-    bot.reply_to(message, "Привет! Бот запущен на Railway ✅")
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    bot.reply_to(message, "Привет! Я бот, запущенный на Railway ✅\nНапиши что-нибудь!")
 
 @bot.message_handler(func=lambda message: True)
-def echo(message):
-    bot.reply_to(message, message.text)
+def echo_all(message):
+    bot.reply_to(message, f"Ты написал: {message.text}")
 
-print("Бот успешно запущен...")
+print("✅ Бот успешно запущен на Railway!")
 
 if __name__ == "__main__":
-    bot.infinity_polling(none_stop=True)
+    bot.infinity_polling(none_stop=True, interval=1)
