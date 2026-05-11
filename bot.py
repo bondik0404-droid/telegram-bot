@@ -13,7 +13,7 @@ from telegram.ext import (
     filters,
     ContextTypes,
 )
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # ─── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -227,15 +227,19 @@ def main():
     ))
 
     # Scheduler: check every minute for posts to publish
-    scheduler = BackgroundScheduler()
+    scheduler = AsyncIOScheduler()
     scheduler.add_job(
-        lambda: asyncio.get_event_loop().create_task(publish_scheduled(app)),
+        publish_scheduled,
         trigger="interval",
         minutes=1,
+        args=[app],
     )
-    scheduler.start()
 
-    logger.info("Bot started.")
+    async def post_init(application):
+        scheduler.start()
+        logger.info("Bot started.")
+
+    app.post_init = post_init
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
