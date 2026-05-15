@@ -4,19 +4,20 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 TOKEN = os.getenv("BOT_TOKEN")
+if not TOKEN:
+    raise ValueError("BOT_TOKEN is not set!")
+
 app = Flask(__name__)
 
-# Инициализация PTB
 application = Application.builder().token(TOKEN).updater(None).build()
 
-# ====================== ХЕНДЛЕРЫ ======================
+# Хендлеры
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Привет! Бот работает на Render через Webhook 🚀")
 
 application.add_handler(CommandHandler("start", start))
-# Добавляй сюда остальные свои команды
 
-# ====================== WEBHOOK ======================
+# Webhook
 @app.post("/webhook")
 def webhook():
     json_data = request.get_json(force=True)
@@ -24,22 +25,23 @@ def webhook():
     application.update_queue.put(update)
     return "OK", 200
 
-# ====================== УДОБНЫЕ СТРАНИЦЫ ======================
+# Страницы
 @app.get("/")
 def home():
     return """
     <h1>✅ telegram-bot is live!</h1>
-    <p><a href="/set_webhook">🔧 Нажми сюда, чтобы установить Webhook</a></p>
+    <p><a href="/set_webhook">🔧 Установить Webhook</a></p>
     """
 
 @app.get("/set_webhook")
-async def set_webhook_route():
-    await application.bot.delete_webhook(drop_pending_updates=True)
-    await application.bot.set_webhook(
+def set_webhook_route():          # ← убрали async
+    import asyncio
+    asyncio.run(application.bot.delete_webhook(drop_pending_updates=True))
+    asyncio.run(application.bot.set_webhook(
         url="https://telegram-bot-8vl0.onrender.com/webhook",
         drop_pending_updates=True
-    )
-    return "<h2>✅ Webhook успешно установлен!</h2><p>Теперь можешь писать боту в Telegram.</p>"
+    ))
+    return "<h2>✅ Webhook успешно установлен!</h2>"
 
 if __name__ == "__main__":
     import asyncio
@@ -48,7 +50,7 @@ if __name__ == "__main__":
     async def run_bot():
         await application.initialize()
         await application.start()
-        print("🚀 Application initialized")
+        print("🚀 Bot ready")
 
     Thread(target=lambda: asyncio.run(run_bot()), daemon=True).start()
 
