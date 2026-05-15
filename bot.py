@@ -9,16 +9,15 @@ if not TOKEN:
 
 app = Flask(__name__)
 
-# Инициализация
+# Создаём приложение
 application = Application.builder().token(TOKEN).updater(None).build()
 
-# Хендлеры
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Бот работает на Render через Webhook 🚀")
+    await update.message.reply_text("Привет! Бот успешно запущен на Render! 🚀")
 
 application.add_handler(CommandHandler("start", start))
 
-# Webhook endpoint
+# Webhook
 @app.post("/webhook")
 def webhook():
     json_data = request.get_json(force=True)
@@ -26,7 +25,7 @@ def webhook():
     application.update_queue.put(update)
     return "OK", 200
 
-# Страницы
+# Главная страница
 @app.get("/")
 def home():
     return """
@@ -36,24 +35,21 @@ def home():
 
 @app.get("/set_webhook")
 def set_webhook_route():
-    # Простой способ без сложных async
+    # Простой запуск без сложного event loop
     import asyncio
-    from telegram.error import TelegramError
-    
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     try:
-        # Запускаем в новом loop
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
         loop.run_until_complete(application.bot.delete_webhook(drop_pending_updates=True))
         loop.run_until_complete(application.bot.set_webhook(
             url="https://telegram-bot-8vl0.onrender.com/webhook",
             drop_pending_updates=True
         ))
-        loop.close()
-        return "<h2>✅ Webhook успешно установлен!</h2>"
+        return "<h2>✅ Webhook успешно установлен!</h2><p>Теперь пиши боту /start</p>"
     except Exception as e:
         return f"<h2>❌ Ошибка: {str(e)}</h2>"
+    finally:
+        loop.close()
 
 if __name__ == "__main__":
     import asyncio
@@ -62,7 +58,7 @@ if __name__ == "__main__":
     async def run_bot():
         await application.initialize()
         await application.start()
-        print("🚀 Bot initialized")
+        print("🚀 Bot ready")
 
     Thread(target=lambda: asyncio.run(run_bot()), daemon=True).start()
 
