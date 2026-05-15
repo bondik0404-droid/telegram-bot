@@ -1,7 +1,7 @@
 import os
-from flask import Flask, request
-from telegram import Update
+from flask import Flask
 from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram import Update
 
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
@@ -9,47 +9,21 @@ if not TOKEN:
 
 app = Flask(__name__)
 
-# Создаём приложение
+# Инициализация бота
 application = Application.builder().token(TOKEN).updater(None).build()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Бот успешно запущен на Render! 🚀")
+    await update.message.reply_text("Привет! Бот работает на Render! 🚀")
 
 application.add_handler(CommandHandler("start", start))
-
-# Webhook
-@app.post("/webhook")
-def webhook():
-    json_data = request.get_json(force=True)
-    update = Update.de_json(json_data, application.bot)
-    application.update_queue.put(update)
-    return "OK", 200
 
 # Главная страница
 @app.get("/")
 def home():
     return """
     <h1>✅ telegram-bot is live!</h1>
-    <p><a href="/set_webhook">🔧 Установить Webhook</a></p>
+    <p>Бот запущен.</p>
     """
-
-@app.get("/set_webhook")
-def set_webhook_route():
-    # Простой запуск без сложного event loop
-    import asyncio
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        loop.run_until_complete(application.bot.delete_webhook(drop_pending_updates=True))
-        loop.run_until_complete(application.bot.set_webhook(
-            url="https://telegram-bot-8vl0.onrender.com/webhook",
-            drop_pending_updates=True
-        ))
-        return "<h2>✅ Webhook успешно установлен!</h2><p>Теперь пиши боту /start</p>"
-    except Exception as e:
-        return f"<h2>❌ Ошибка: {str(e)}</h2>"
-    finally:
-        loop.close()
 
 if __name__ == "__main__":
     import asyncio
@@ -58,9 +32,20 @@ if __name__ == "__main__":
     async def run_bot():
         await application.initialize()
         await application.start()
-        print("🚀 Bot ready")
+        # Устанавливаем webhook один раз при старте
+        try:
+            await application.bot.delete_webhook(drop_pending_updates=True)
+            await application.bot.set_webhook(
+                url="https://telegram-bot-8vl0.onrender.com/webhook",
+                drop_pending_updates=True
+            )
+            print("✅ Webhook успешно установлен при старте!")
+        except Exception as e:
+            print(f"Webhook setup error: {e}")
 
+    # Запуск бота
     Thread(target=lambda: asyncio.run(run_bot()), daemon=True).start()
 
+    # Flask
     port = int(os.getenv("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
