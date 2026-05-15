@@ -6,15 +6,15 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 TOKEN = os.getenv("BOT_TOKEN")
 app = Flask(__name__)
 
-# Инициализация приложения
+# Инициализация PTB
 application = Application.builder().token(TOKEN).updater(None).build()
 
-# ====================== ТВОИ ХЕНДЛЕРЫ ======================
+# ====================== ХЕНДЛЕРЫ ======================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Бот успешно работает на Render через Webhook 🚀")
+    await update.message.reply_text("Привет! Бот работает на Render через Webhook 🚀")
 
 application.add_handler(CommandHandler("start", start))
-# Добавляй остальные свои handlers сюда
+# Добавляй сюда остальные свои команды
 
 # ====================== WEBHOOK ======================
 @app.post("/webhook")
@@ -29,8 +29,7 @@ def webhook():
 def home():
     return """
     <h1>✅ telegram-bot is live!</h1>
-    <p><a href="/set_webhook">🔧 Установить Webhook</a></p>
-    <p><a href="/health">❤️ Health Check</a></p>
+    <p><a href="/set_webhook">🔧 Нажми сюда, чтобы установить Webhook</a></p>
     """
 
 @app.get("/set_webhook")
@@ -40,11 +39,7 @@ async def set_webhook_route():
         url="https://telegram-bot-8vl0.onrender.com/webhook",
         drop_pending_updates=True
     )
-    return "<h2>✅ Webhook успешно установлен!</h2><p>Можешь писать боту в Telegram.</p>"
-
-@app.get("/health")
-def health():
-    return "OK"
+    return "<h2>✅ Webhook успешно установлен!</h2><p>Теперь можешь писать боту в Telegram.</p>"
 
 if __name__ == "__main__":
     import asyncio
@@ -53,14 +48,9 @@ if __name__ == "__main__":
     async def run_bot():
         await application.initialize()
         await application.start()
-        print("🚀 Бот инициализирован")
+        print("🚀 Application initialized")
 
-    def start_bot():
-        asyncio.run(run_bot())
+    Thread(target=lambda: asyncio.run(run_bot()), daemon=True).start()
 
-    # Запускаем бота в отдельном потоке
-    Thread(target=start_bot, daemon=True).start()
-
-    # Запускаем Flask
     port = int(os.getenv("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
