@@ -8,24 +8,18 @@ if not TOKEN:
     raise ValueError("BOT_TOKEN is not set!")
 
 app = Flask(__name__)
-
 application = Application.builder().token(TOKEN).updater(None).build()
 
-# ====================== ХЕНДЛЕРЫ ======================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Бот работает на Render! 🚀\n\nНапиши что угодно — я отвечу.")
+    await update.message.reply_text("✅ Бот работает!\nНапиши любое сообщение.")
 
-async def echo_or_process(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.lower()
-    await update.message.reply_text(f"Получил: {text}\n\n(Здесь будет твоя логика)")
+async def any_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text or "что-то"
+    await update.message.reply_text(f"🔄 Я получил: {text}\n\nБот живой и отвечает!")
 
-# Команды
 application.add_handler(CommandHandler("start", start))
+application.add_handler(MessageHandler(filters.ALL, any_message))   # ← реагирует на всё
 
-# Все текстовые сообщения
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo_or_process))
-
-# ====================== WEBHOOK ======================
 @app.post("/webhook")
 def webhook():
     json_data = request.get_json(force=True)
@@ -35,7 +29,7 @@ def webhook():
 
 @app.get("/")
 def home():
-    return "<h1>✅ Bot is live and ready!</h1>"
+    return "<h1>✅ Bot is live and should reply to everything!</h1>"
 
 if __name__ == "__main__":
     import asyncio
@@ -44,11 +38,8 @@ if __name__ == "__main__":
     async def run_bot():
         await application.initialize()
         await application.start()
-        await application.bot.set_webhook(
-            url="https://telegram-bot-8vl0.onrender.com/webhook",
-            drop_pending_updates=True
-        )
-        print("✅ Webhook установлен")
+        await application.bot.set_webhook(url="https://telegram-bot-8vl0.onrender.com/webhook", drop_pending_updates=True)
+        print("Webhook set")
 
     Thread(target=lambda: asyncio.run(run_bot()), daemon=True).start()
 
