@@ -1,42 +1,41 @@
 import asyncio
+import os
 from aiogram import Bot, Dispatcher
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 
-TOKEN = "ТОКЕН_БОТА_ЗДЕСЬ"
+TOKEN = os.getenv("BOT_TOKEN")          # ← лучше брать из переменных Render
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# ←←← Здесь подключи все свои роутеры/handlers ←←←
-# from handlers import router
-# dp.include_router(router)
+# ← Подключи здесь все свои handlers/routers
 
 async def on_startup(bot: Bot) -> None:
     await bot.delete_webhook(drop_pending_updates=True)
     await bot.set_webhook(
-        url="https://telegram-bot-8vl0.onrender.com/webhook",   # ← Убедись, что URL правильный!
+        url="https://telegram-bot-8vl0.onrender.com/webhook",  # ← твой точный URL
         drop_pending_updates=True
     )
-    print("✅ Webhook установлен успешно!")
+    print("✅ Webhook установлен!")
 
 async def main():
     dp.startup.register(on_startup)
 
-    # Создаём веб-сервер
     app = web.Application()
     SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path="/webhook")
-    
     setup_application(app, dp, bot=bot)
 
-    # Render использует порт 10000
+    # ←←← КРИТИЧНО ДЛЯ RENDER ←←←
+    port = int(os.getenv("PORT", 10000))
+    
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, host="0.0.0.0", port=10000)
+    site = web.TCPSite(runner, host="0.0.0.0", port=port)
     await site.start()
 
-    print("🚀 Бот запущен на Webhook!")
-    await asyncio.Event().wait()  # Держим процесс запущенным
+    print(f"🚀 Бот запущен на Webhook! Порт: {port}")
+    await asyncio.Event().wait()
 
 if __name__ == "__main__":
     asyncio.run(main())
