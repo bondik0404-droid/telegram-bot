@@ -1,42 +1,51 @@
-import asyncio
 import os
-from aiogram import Bot, Dispatcher
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
-from aiohttp import web
+from flask import Flask, request
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 TOKEN = os.getenv("BOT_TOKEN")
+app = Flask(__name__)
 
-bot = Bot(token=TOKEN)
-dp = Dispatcher()
+# Инициализация PTB
+application = Application.builder().token(TOKEN).updater(None).build()
 
-# Подключи здесь свои handlers, если они в отдельных файлах
-# from handlers.user import router
-# dp.include_router(router)
+# === ТВОИ ХЕНДЛЕРЫ ===
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Привет! Я работаю на Render через Webhook.")
 
-async def on_startup(bot: Bot):
-    await bot.delete_webhook(drop_pending_updates=True)
-    await bot.set_webhook(
-        url="https://telegram-bot-8vl0.onrender.com/webhook",
-        drop_pending_updates=True
-    )
-    print("✅ Webhook успешно установлен!")
+application.add_handler(CommandHandler("start", start))
 
-async def main():
-    dp.startup.register(on_startup)
+# Webhook endpoint
+@app.post("/webhook")
+def webhook():
+    json_data = request.get_json(force=True)
+    update = Update.de_json(json_data, application.bot)
+    application.update_queue.put(update)
+    return "OK", 200
 
-    app = web.Application()
-    SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path="/webhook")
-    setup_application(app, dp, bot=bot)
-
-    port = int(os.getenv("PORT", 10000))
-
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, host="0.0.0.0", port=port)
-    await site.start()
-
-    print(f"🚀 Бот запущен через Webhook на порту {port}")
-    await asyncio.Event().wait()
+@app.get("/")
+def home():
+    return "Бот живой!"
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import asyncio
+    from threading import Thread
+
+    # Запускаем обработку обновлений в фоне
+    async def run_bot():
+        await application.initialize()
+        await application.start()
+        await application.bot.set_webhook(
+            url="https://telegram-bot-8vl0.onrender.com/webhook",
+            drop_pending_updates=True
+        )
+        print("🚀 Webhook установлен!")
+
+    def start_bot():
+        asyncio.run(run_bot())
+
+    Thread(target=start_bot, daemon=True).start()
+
+    # Запускаем Flask
+    port = int(os.getenv("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
